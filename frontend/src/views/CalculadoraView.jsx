@@ -288,16 +288,16 @@ export default function CalculadoraView({
               />
             </div>
 
-            <div className="bg-th-122238/50 border border-blue-900/50 rounded-xl p-1.5 flex flex-col justify-center items-center text-center">
-              <span className="text-[10px] uppercase font-bold text-blue-300 block leading-tight">
+            <div>
+              <label className="text-[11px] text-blue-400 text-center block mb-1 font-semibold">
                 Costo Real
-              </span>
-              <span className="text-sm sm:text-base font-extrabold text-gray-100 font-mono mt-0.5">
-                {formatMoney(costoRealTotal)}
-              </span>
-              <span className="text-[9px] text-blue-300/60 block">
-                Lo que te cuesta
-              </span>
+              </label>
+              <input
+                type="text"
+                readOnly
+                value={formatMoney(costoRealTotal)}
+                className="w-full bg-th-151617 text-blue-400 py-2 px-2 rounded-xl border border-gray-700 font-bold text-center text-xs sm:text-sm font-mono focus:outline-none cursor-default select-none"
+              />
             </div>
           </div>
 
