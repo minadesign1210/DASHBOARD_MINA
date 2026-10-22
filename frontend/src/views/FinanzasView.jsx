@@ -116,18 +116,25 @@ export default function FinanzasView({
 
   const formatMoney = (val) => `$${(val || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Global calculations
-  const totalIngresos = movimientos
+  // Dinámica: Si hay cuenta seleccionada, calcular métricas de esa cuenta; si no, de todo
+  const isFilteredCuenta = selectedCuenta !== 'TODAS';
+  const relevantMovimientos = isFilteredCuenta
+    ? movimientos.filter(m => m.cuenta === selectedCuenta)
+    : movimientos;
+
+  const totalIngresos = relevantMovimientos
     .filter(m => m.tipo === 'INGRESO')
     .reduce((acc, m) => acc + (m.monto || 0), 0);
 
-  const totalEgresos = movimientos
+  const totalEgresos = relevantMovimientos
     .filter(m => m.tipo === 'EGRESO')
     .reduce((acc, m) => acc + (m.monto || 0), 0);
 
-  // Category spending breakdown (egresos only)
+  const flujoNeto = totalIngresos - totalEgresos;
+
+  // Category spending breakdown (egresos only para la cuenta seleccionada o global)
   const categoryTotals = CATEGORIAS.reduce((acc, cat) => {
-    acc[cat] = movimientos
+    acc[cat] = relevantMovimientos
       .filter(m => m.tipo === 'EGRESO' && normalizeCategoria(m.categoria) === cat)
       .reduce((sum, m) => sum + (m.monto || 0), 0);
     return acc;
@@ -152,10 +159,14 @@ export default function FinanzasView({
 
   return (
     <div className="space-y-4">
-      {/* Top Highlights: Ingresos, Egresos, Flujo Neto */}
+      {/* Top Highlights: Ingresos, Egresos, Flujo Neto dinámicos por cuenta o globales */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
         <div className="bg-th-1c1d1f border border-gray-800 p-3 sm:p-4 rounded-xl shadow-sm">
-          <span className="text-[10px] sm:text-xs text-gray-400 uppercase font-semibold block">Total Ingresos</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs text-gray-400 uppercase font-semibold block truncate">
+              Total Ingresos {isFilteredCuenta && <strong className="text-orange-400 font-bold ml-1">({selectedCuenta})</strong>}
+            </span>
+          </div>
           <div className="flex items-center justify-between mt-1">
             <span className="text-sm sm:text-xl font-bold font-mono text-emerald-400 truncate">{formatMoney(totalIngresos)}</span>
             <ArrowDownLeft className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" />
@@ -163,7 +174,11 @@ export default function FinanzasView({
         </div>
 
         <div className="bg-th-1c1d1f border border-gray-800 p-3 sm:p-4 rounded-xl shadow-sm">
-          <span className="text-[10px] sm:text-xs text-gray-400 uppercase font-semibold block">Total Egresos / Gastos</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs text-gray-400 uppercase font-semibold block truncate">
+              Total Egresos {isFilteredCuenta ? <strong className="text-orange-400 font-bold ml-1">({selectedCuenta})</strong> : '/ Gastos'}
+            </span>
+          </div>
           <div className="flex items-center justify-between mt-1">
             <span className="text-sm sm:text-xl font-bold font-mono text-rose-400 truncate">{formatMoney(totalEgresos)}</span>
             <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 shrink-0" />
@@ -171,12 +186,16 @@ export default function FinanzasView({
         </div>
 
         <div className="bg-th-1c1d1f border border-gray-800 p-3 sm:p-4 rounded-xl shadow-sm col-span-2 sm:col-span-1">
-          <span className="text-[10px] sm:text-xs text-gray-400 uppercase font-semibold block">Flujo Neto en Caja</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs text-gray-400 uppercase font-semibold block truncate">
+              {isFilteredCuenta ? <span>Flujo Neto <strong className="text-orange-400 font-bold">({selectedCuenta})</strong></span> : 'Flujo Neto en Caja'}
+            </span>
+          </div>
           <div className="flex items-center justify-between mt-1">
             <span className={`text-sm sm:text-xl font-bold font-mono truncate ${
-              totalIngresos - totalEgresos >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              flujoNeto >= 0 ? 'text-emerald-400' : 'text-rose-400'
             }`}>
-              {formatMoney(totalIngresos - totalEgresos)}
+              {formatMoney(flujoNeto)}
             </span>
             <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400 shrink-0" />
           </div>
@@ -186,9 +205,21 @@ export default function FinanzasView({
       {/* Saldos por Cuenta y Método de Pago */}
       <div className="space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-            Saldos por Cuenta y Método de Pago
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Saldos por Cuenta y Método de Pago
+            </span>
+            {isFilteredCuenta && (
+              <button
+                onClick={() => setSelectedCuenta('TODAS')}
+                className="text-[10px] font-bold text-orange-400 hover:text-orange-300 bg-orange-950/60 border border-orange-700/60 px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+                title="Quitar filtro y ver todas las cuentas"
+              >
+                <span>Filtro: {selectedCuenta}</span>
+                <span className="text-gray-400 hover:text-white ml-0.5">✕</span>
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={onOpenIngreso}
@@ -354,7 +385,7 @@ export default function FinanzasView({
                     : 'bg-gray-800 text-gray-200 border border-gray-700/60'
                 }`}
               >
-                {movimientos.length}
+                {relevantMovimientos.length}
               </span>
             </button>
 
